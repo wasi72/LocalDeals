@@ -43,18 +43,19 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 const POPULAR_CITIES = [
-  { label: '🌍 All Worldwide', city: '' },
-  { label: '🇯🇵 Tokyo (6 Deals)', city: 'Tokyo' },
-  { label: '🇺🇸 New York', city: 'New York' },
-  { label: '🇬🇧 London', city: 'London' },
-  { label: '🇫🇷 Paris', city: 'Paris' },
-  { label: '🇵🇰 Lahore', city: 'Lahore' },
-  { label: '🇵🇰 Burewala', city: 'Burewala' },
-  { label: '🇵🇰 Chichawatni', city: 'Chichawatni' },
-  { label: '🇦🇪 Dubai', city: 'Dubai' },
-  { label: '🇮🇹 Rome', city: 'Rome' },
-  { label: '🇨🇦 Toronto', city: 'Toronto' },
-  { label: '🇸🇬 Singapore', city: 'Singapore' },
+  { label: '🌍 Worldwide (130+ Deals)', city: '' },
+  { label: '🇯🇵 Tokyo (12 Deals)', city: 'Tokyo' },
+  { label: '🇺🇸 New York (13 Deals)', city: 'New York' },
+  { label: '🇬🇧 London (12 Deals)', city: 'London' },
+  { label: '🇫🇷 Paris (13 Deals)', city: 'Paris' },
+  { label: '🇵🇰 Lahore (12 Deals)', city: 'Lahore' },
+  { label: '🇵🇰 Karachi (11 Deals)', city: 'Karachi' },
+  { label: '🇦🇪 Dubai (11 Deals)', city: 'Dubai' },
+  { label: '🇵🇰 Burewala (6 Deals)', city: 'Burewala' },
+  { label: '🇵🇰 Chichawatni (5 Deals)', city: 'Chichawatni' },
+  { label: '🇮🇹 Rome (8 Deals)', city: 'Rome' },
+  { label: '🇨🇦 Toronto (9 Deals)', city: 'Toronto' },
+  { label: '🇸🇬 Singapore (9 Deals)', city: 'Singapore' },
   { label: '🇩🇪 Berlin', city: 'Berlin' },
   { label: '🇦🇺 Sydney', city: 'Sydney' },
 ];
@@ -429,7 +430,7 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto text-center space-y-5">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold tracking-wide shadow-sm">
               <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Worldwide Neighborhood Discounts • Verified Independent Businesses</span>
+              <span>Worldwide Neighborhood Discounts • 130+ Verified Local Deals Across Global Hubs</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
