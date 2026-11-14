@@ -72,6 +72,8 @@ export default function Navbar({
     { label: '🇺🇸 Chicago (USA)', value: 'Chicago' },
     { label: '🇪🇸 Barcelona (Spain)', value: 'Barcelona' },
     { label: '🇵🇰 Lahore (Pakistan)', value: 'Lahore' },
+    { label: '🇵🇰 Burewala (Pakistan)', value: 'Burewala' },
+    { label: '🇵🇰 Chichawatni (Pakistan)', value: 'Chichawatni' },
   ];
 
   return (

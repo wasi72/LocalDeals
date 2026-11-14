@@ -29,77 +29,77 @@ export async function GET(request: Request) {
     const categorySlug = searchParams.get('category') || '';
     const endingSoon = searchParams.get('endingSoon') === 'true';
     const minDiscount = parseInt(searchParams.get('minDiscount') || '0', 10);
+    const autoProvision = searchParams.get('auto') === 'true';
 
     const cleanCity = normalizeCityName(rawCity);
     const isWorldwide = !cleanCity || cleanCity.toLowerCase() === 'all' || cleanCity.toLowerCase() === 'worldwide';
 
-    // If a specific city is requested, ensure authentic deals exist in the DB for that city!
-    if (!isWorldwide) {
-      await ensureDealsForCity(cleanCity);
-    }
-
     const now = new Date();
 
-    const where: any = {
-      status: 'APPROVED',
-      startsAt: { lte: now },
-      endsAt: { gte: now },
+    const buildWhere = (cityQuery = cleanCity) => {
+      const whereClause: any = {
+        status: 'APPROVED',
+        startsAt: { lte: now },
+        endsAt: { gte: now },
+      };
+
+      if (query) {
+        whereClause.OR = [
+          { title: { contains: query } },
+          { description: { contains: query } },
+          { business: { name: { contains: query } } },
+          { business: { city: { contains: query } } },
+          { business: { country: { contains: query } } },
+        ];
+      }
+
+      if (!isWorldwide && cityQuery) {
+        const meta = resolveCityMetadata(cityQuery);
+        const resolvedName = meta.name;
+        whereClause.business = {
+          ...whereClause.business,
+          OR: [
+            { city: { contains: resolvedName } },
+            { city: { contains: cityQuery } },
+            { postcode: { startsWith: cityQuery } },
+            { country: { contains: resolvedName } },
+          ],
+        };
+      }
+
+      if (country && country.toLowerCase() !== 'all' && country.toLowerCase() !== 'global') {
+        whereClause.business = {
+          ...whereClause.business,
+          country: { contains: country },
+        };
+      }
+
+      if (categorySlug && categorySlug !== 'all') {
+        whereClause.category = {
+          slug: categorySlug,
+        };
+      }
+
+      if (minDiscount > 0) {
+        whereClause.discountPercentage = {
+          gte: minDiscount,
+        };
+      }
+
+      if (endingSoon) {
+        const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        whereClause.endsAt = {
+          gte: now,
+          lte: in7Days,
+        };
+      }
+
+      return whereClause;
     };
 
-    if (query) {
-      where.OR = [
-        { title: { contains: query } },
-        { description: { contains: query } },
-        { business: { name: { contains: query } } },
-        { business: { city: { contains: query } } },
-        { business: { country: { contains: query } } },
-      ];
-    }
-
-    // Filter by city
-    if (!isWorldwide) {
-      const cityMeta = resolveCityMetadata(cleanCity);
-      const searchTarget = cityMeta.name || cleanCity;
-
-      where.business = {
-        ...where.business,
-        OR: [
-          { city: { contains: searchTarget } },
-          { postcode: { startsWith: cleanCity } },
-          { country: { contains: searchTarget } },
-        ],
-      };
-    }
-
-    if (country && country.toLowerCase() !== 'all' && country.toLowerCase() !== 'global') {
-      where.business = {
-        ...where.business,
-        country: { contains: country },
-      };
-    }
-
-    if (categorySlug && categorySlug !== 'all') {
-      where.category = {
-        slug: categorySlug,
-      };
-    }
-
-    if (minDiscount > 0) {
-      where.discountPercentage = {
-        gte: minDiscount,
-      };
-    }
-
-    if (endingSoon) {
-      const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      where.endsAt = {
-        gte: now,
-        lte: in7Days,
-      };
-    }
-
-    const offers = await prisma.offer.findMany({
-      where,
+    // First attempt: Read-only query for existing offers
+    let offers = await prisma.offer.findMany({
+      where: buildWhere(),
       include: {
         business: true,
         category: true,
@@ -113,10 +113,35 @@ export async function GET(request: Request) {
       ],
     });
 
+    // If no offers found AND autoProvision is explicitly requested:
+    // Provision authentic deals safely with concurrency locks!
+    if (offers.length === 0 && !isWorldwide && autoProvision && cleanCity.length >= 3) {
+      await ensureDealsForCity(cleanCity);
+      // Re-query with updated DB records
+      offers = await prisma.offer.findMany({
+        where: buildWhere(),
+        include: {
+          business: true,
+          category: true,
+          _count: {
+            select: { redemptions: true, favorites: true },
+          },
+        },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { endsAt: 'asc' },
+        ],
+      });
+    }
+
+    const cityMeta = resolveCityMetadata(cleanCity);
+
     return NextResponse.json({
       success: true,
       count: offers.length,
-      city: isWorldwide ? 'Worldwide' : cleanCity,
+      city: isWorldwide ? 'Worldwide' : cityMeta.name || cleanCity,
+      country: isWorldwide ? 'Global' : cityMeta.country,
+      currency: isWorldwide ? 'USD' : cityMeta.currency,
       offers,
     });
   } catch (error: any) {
@@ -192,7 +217,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Record audit log
     await prisma.auditLog.create({
       data: {
         actorId: user.id,

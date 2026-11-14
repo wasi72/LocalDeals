@@ -30,6 +30,7 @@ import OfferModal from '@/components/OfferModal';
 import RedemptionModal from '@/components/RedemptionModal';
 import ReportModal from '@/components/ReportModal';
 import { calculateHaversineDistanceKm, KNOWN_CITIES } from '@/lib/geo';
+import { normalizeCityName } from '@/lib/cityDeals';
 
 const CATEGORY_ICONS: Record<string, any> = {
   Utensils,
@@ -43,46 +44,48 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 const POPULAR_CITIES = [
   { label: '🌍 All Worldwide', city: '' },
+  { label: '🇯🇵 Tokyo (6 Deals)', city: 'Tokyo' },
   { label: '🇺🇸 New York', city: 'New York' },
   { label: '🇬🇧 London', city: 'London' },
-  { label: '🇯🇵 Tokyo', city: 'Tokyo' },
   { label: '🇫🇷 Paris', city: 'Paris' },
-  { label: '🇩🇪 Berlin', city: 'Berlin' },
-  { label: '🇦🇺 Sydney', city: 'Sydney' },
+  { label: '🇵🇰 Lahore', city: 'Lahore' },
+  { label: '🇵🇰 Burewala', city: 'Burewala' },
+  { label: '🇵🇰 Chichawatni', city: 'Chichawatni' },
   { label: '🇦🇪 Dubai', city: 'Dubai' },
+  { label: '🇮🇹 Rome', city: 'Rome' },
   { label: '🇨🇦 Toronto', city: 'Toronto' },
   { label: '🇸🇬 Singapore', city: 'Singapore' },
-  { label: '🇮🇹 Rome', city: 'Rome' },
-  { label: '🇪🇸 Barcelona', city: 'Barcelona' },
-  { label: '🇵🇰 Lahore', city: 'Lahore' },
-  { label: '🇺🇸 Los Angeles', city: 'Los Angeles' },
+  { label: '🇩🇪 Berlin', city: 'Berlin' },
+  { label: '🇦🇺 Sydney', city: 'Sydney' },
 ];
 
 const KNOWN_SUGGESTIONS = [
-  { name: 'New York', country: 'United States', flag: '🇺🇸' },
-  { name: 'London', country: 'United Kingdom', flag: '🇬🇧' },
-  { name: 'Tokyo', country: 'Japan', flag: '🇯🇵' },
-  { name: 'Paris', country: 'France', flag: '🇫🇷' },
-  { name: 'Berlin', country: 'Germany', flag: '🇩🇪' },
-  { name: 'Sydney', country: 'Australia', flag: '🇦🇺' },
-  { name: 'Dubai', country: 'United Arab Emirates', flag: '🇦🇪' },
-  { name: 'Toronto', country: 'Canada', flag: '🇨🇦' },
-  { name: 'Singapore', country: 'Singapore', flag: '🇸🇬' },
-  { name: 'Rome', country: 'Italy', flag: '🇮🇹' },
-  { name: 'Los Angeles', country: 'United States', flag: '🇺🇸' },
-  { name: 'Chicago', country: 'United States', flag: '🇺🇸' },
-  { name: 'San Francisco', country: 'United States', flag: '🇺🇸' },
-  { name: 'Barcelona', country: 'Spain', flag: '🇪🇸' },
-  { name: 'Madrid', country: 'Spain', flag: '🇪🇸' },
-  { name: 'Amsterdam', country: 'Netherlands', flag: '🇳🇱' },
-  { name: 'Lahore', country: 'Pakistan', flag: '🇵🇰' },
-  { name: 'Karachi', country: 'Pakistan', flag: '🇵🇰' },
-  { name: 'Mumbai', country: 'India', flag: '🇮🇳' },
-  { name: 'Melbourne', country: 'Australia', flag: '🇦🇺' },
-  { name: 'Vienna', country: 'Austria', flag: '🇦🇹' },
-  { name: 'Seoul', country: 'South Korea', flag: '🇰🇷' },
-  { name: 'Bangkok', country: 'Thailand', flag: '🇹🇭' },
-  { name: 'São Paulo', country: 'Brazil', flag: '🇧🇷' },
+  { name: 'Tokyo', country: 'Japan', flag: '🇯🇵', aliases: ['tokio', 'tky'] },
+  { name: 'New York', country: 'United States', flag: '🇺🇸', aliases: ['nyc', 'new york city'] },
+  { name: 'London', country: 'United Kingdom', flag: '🇬🇧', aliases: ['londres'] },
+  { name: 'Paris', country: 'France', flag: '🇫🇷', aliases: ['parigi'] },
+  { name: 'Berlin', country: 'Germany', flag: '🇩🇪', aliases: ['berlín'] },
+  { name: 'Lahore', country: 'Pakistan', flag: '🇵🇰', aliases: ['lahor'] },
+  { name: 'Karachi', country: 'Pakistan', flag: '🇵🇰', aliases: [] },
+  { name: 'Burewala', country: 'Pakistan', flag: '🇵🇰', aliases: ['bure', 'bura'] },
+  { name: 'Chichawatni', country: 'Pakistan', flag: '🇵🇰', aliases: ['chich', 'chicha'] },
+  { name: 'Islamabad', country: 'Pakistan', flag: '🇵🇰', aliases: ['isb'] },
+  { name: 'Rawalpindi', country: 'Pakistan', flag: '🇵🇰', aliases: ['pindi'] },
+  { name: 'Faisalabad', country: 'Pakistan', flag: '🇵🇰', aliases: ['faislabad'] },
+  { name: 'Multan', country: 'Pakistan', flag: '🇵🇰', aliases: [] },
+  { name: 'Sahiwal', country: 'Pakistan', flag: '🇵🇰', aliases: ['montgomery'] },
+  { name: 'Rome', country: 'Italy', flag: '🇮🇹', aliases: ['roma'] },
+  { name: 'Dubai', country: 'United Arab Emirates', flag: '🇦🇪', aliases: [] },
+  { name: 'Toronto', country: 'Canada', flag: '🇨🇦', aliases: [] },
+  { name: 'Singapore', country: 'Singapore', flag: '🇸🇬', aliases: ['singapur'] },
+  { name: 'Los Angeles', country: 'United States', flag: '🇺🇸', aliases: ['la'] },
+  { name: 'Chicago', country: 'United States', flag: '🇺🇸', aliases: [] },
+  { name: 'San Francisco', country: 'United States', flag: '🇺🇸', aliases: ['sf'] },
+  { name: 'Sydney', country: 'Australia', flag: '🇦🇺', aliases: [] },
+  { name: 'Melbourne', country: 'Australia', flag: '🇦🇺', aliases: [] },
+  { name: 'Barcelona', country: 'Spain', flag: '🇪🇸', aliases: [] },
+  { name: 'Miami', country: 'United States', flag: '🇺🇸', aliases: [] },
+  { name: 'Vienna', country: 'Austria', flag: '🇦🇹', aliases: ['wien'] },
 ];
 
 export default function HomePage() {
@@ -116,36 +119,50 @@ export default function HomePage() {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Core Server Fetch: queries /api/offers with optional city parameter
-  const fetchDealsFromServer = useCallback(async (cityName = '', background = false) => {
-    try {
-      if (!background) {
-        setLoading(true);
-      }
-      setIsSearchingCity(true);
-
-      const trimmed = cityName.trim();
-      let url = '/api/offers';
-      if (trimmed && trimmed.toLowerCase() !== 'all' && trimmed.toLowerCase() !== 'worldwide') {
-        url += `?city=${encodeURIComponent(trimmed)}`;
-      }
-
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data.success && Array.isArray(data.offers)) {
-        setOffers(data.offers);
-        // If this was a full worldwide fetch, save as master cache
-        if (!trimmed) {
-          setWorldwideOffers(data.offers);
+  const fetchDealsFromServer = useCallback(
+    async (cityName = '', options: { background?: boolean; auto?: boolean } = {}) => {
+      const { background = false, auto = false } = options;
+      try {
+        if (!background) {
+          setLoading(true);
         }
+        setIsSearchingCity(true);
+
+        const trimmed = cityName.trim();
+        let url = '/api/offers';
+        const params = new URLSearchParams();
+
+        if (trimmed && trimmed.toLowerCase() !== 'all' && trimmed.toLowerCase() !== 'worldwide') {
+          params.set('city', trimmed);
+          if (auto) {
+            params.set('auto', 'true');
+          }
+        }
+
+        const qs = params.toString();
+        if (qs) {
+          url += `?${qs}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.offers)) {
+          setOffers(data.offers);
+          // If this was a full worldwide fetch, save as master cache
+          if (!trimmed) {
+            setWorldwideOffers(data.offers);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load offers from server', err);
+      } finally {
+        setLoading(false);
+        setIsSearchingCity(false);
       }
-    } catch (err) {
-      console.error('Failed to load offers from server', err);
-    } finally {
-      setLoading(false);
-      setIsSearchingCity(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   // Initial load: parse URL query ?city=... if present, else fetch all worldwide
   useEffect(() => {
@@ -153,13 +170,14 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search);
       const initialCity = params.get('city');
       if (initialCity && initialCity.toLowerCase() !== 'all') {
-        setCityInput(initialCity);
-        setActiveCity(initialCity);
-        fetchDealsFromServer(initialCity, false);
+        const normalized = normalizeCityName(initialCity);
+        setCityInput(normalized);
+        setActiveCity(normalized);
+        fetchDealsFromServer(normalized, { background: false, auto: true });
         return;
       }
     }
-    fetchDealsFromServer('', false);
+    fetchDealsFromServer('', { background: false, auto: false });
   }, [fetchDealsFromServer]);
 
   // Handle clicking outside suggestions dropdown
@@ -178,7 +196,7 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced auto-fetch as the user types into cityInput
+  // Debounced auto-fetch as the user types into cityInput (READ-ONLY, auto=false)
   const handleCityInputChange = (val: string) => {
     setCityInput(val);
     setShowCitySuggestions(true);
@@ -194,7 +212,7 @@ export default function HomePage() {
       if (worldwideOffers.length > 0) {
         setOffers(worldwideOffers);
       } else {
-        fetchDealsFromServer('', true);
+        fetchDealsFromServer('', { background: true, auto: false });
       }
       if (typeof window !== 'undefined') {
         window.history.pushState({}, '', '/');
@@ -202,14 +220,15 @@ export default function HomePage() {
       return;
     }
 
-    // After 400ms pause, automatically query server for the entered city
+    // Read-only search while typing (auto=false ensures zero DB writes and zero lock errors!)
     debounceTimerRef.current = setTimeout(() => {
-      setActiveCity(trimmed);
-      fetchDealsFromServer(trimmed, true);
+      const resolved = normalizeCityName(trimmed);
+      setActiveCity(resolved);
+      fetchDealsFromServer(resolved, { background: true, auto: false });
       if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', `/?city=${encodeURIComponent(trimmed)}`);
+        window.history.pushState({}, '', `/?city=${encodeURIComponent(resolved)}`);
       }
-    }, 450);
+    }, 350);
   };
 
   // Explicit Trigger search by city (Form submit or Enter key or Button click)
@@ -220,9 +239,10 @@ export default function HomePage() {
     }
 
     setShowCitySuggestions(false);
-    const target = cityInput.trim();
+    const target = normalizeCityName(cityInput.trim());
     setActiveCity(target);
-    fetchDealsFromServer(target, false);
+    // Explicit submit enables auto=true for on-demand provisioning if city is novel!
+    fetchDealsFromServer(target, { background: false, auto: true });
 
     if (typeof window !== 'undefined') {
       const url = target ? `/?city=${encodeURIComponent(target)}` : '/';
@@ -235,13 +255,14 @@ export default function HomePage() {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    setCityInput(cityName);
-    setActiveCity(cityName);
+    const resolved = normalizeCityName(cityName);
+    setCityInput(resolved);
+    setActiveCity(resolved);
     setShowCitySuggestions(false);
-    fetchDealsFromServer(cityName, false);
+    fetchDealsFromServer(resolved, { background: false, auto: true });
 
     if (typeof window !== 'undefined') {
-      const url = cityName ? `/?city=${encodeURIComponent(cityName)}` : '/';
+      const url = resolved ? `/?city=${encodeURIComponent(resolved)}` : '/';
       window.history.pushState({}, '', url);
     }
   };
@@ -262,7 +283,7 @@ export default function HomePage() {
     if (worldwideOffers.length > 0) {
       setOffers(worldwideOffers);
     } else {
-      fetchDealsFromServer('', false);
+      fetchDealsFromServer('', { background: false, auto: false });
     }
 
     if (typeof window !== 'undefined') {
@@ -273,43 +294,56 @@ export default function HomePage() {
   // Autocomplete suggestions
   const citySuggestions = useMemo(() => {
     if (!cityInput.trim()) return KNOWN_SUGGESTIONS;
-    const q = cityInput.toLowerCase();
+    const q = cityInput.toLowerCase().trim();
     return KNOWN_SUGGESTIONS.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.country.toLowerCase().includes(q) ||
+        c.aliases.some((a) => a.includes(q))
     );
   }, [cityInput]);
 
-  // Real-time client-side matching across current offers
+  // Real-time client-side matching across current offers with synonym awareness
   const liveCityFilteredOffers = useMemo(() => {
-    const filterQuery = cityInput.trim().toLowerCase();
+    const rawQuery = cityInput.trim().toLowerCase();
 
     // If city input is empty, return whatever offers were returned for activeCity or worldwide
-    if (!filterQuery || filterQuery === 'all' || filterQuery === 'worldwide') {
+    if (!rawQuery || rawQuery === 'all' || rawQuery === 'worldwide') {
       return offers;
     }
 
-    // If typing, first check if current offers contain matches
+    const resolved = normalizeCityName(rawQuery).toLowerCase();
+
+    // Filter current offers by both raw query and resolved name
     const matched = offers.filter((offer) => {
       const c = offer.business?.city?.toLowerCase() || '';
       const country = offer.business?.country?.toLowerCase() || '';
       const address = offer.business?.address?.toLowerCase() || '';
       const postcode = offer.business?.postcode?.toLowerCase() || '';
       return (
-        c.includes(filterQuery) ||
-        country.includes(filterQuery) ||
-        address.includes(filterQuery) ||
-        postcode.includes(filterQuery)
+        c.includes(resolved) ||
+        c.includes(rawQuery) ||
+        country.includes(resolved) ||
+        country.includes(rawQuery) ||
+        address.includes(resolved) ||
+        postcode.includes(rawQuery)
       );
     });
 
-    // If matched has items, show them immediately; otherwise return current offers (server fetch in progress)
-    return matched.length > 0 ? matched : offers;
-  }, [offers, cityInput]);
+    // If active search returned specific offers for this city, use them;
+    // Otherwise show matched subset (prevents flashing unrelated global deals while typing)
+    if (activeCity && offers.length > 0) {
+      return offers;
+    }
+
+    return matched;
+  }, [offers, cityInput, activeCity]);
 
   // Calculate distance relative to active city
   const enrichedOffers = useMemo(() => {
     const cityKey = (activeCity || cityInput).trim().toLowerCase();
-    const cityCoords = KNOWN_CITIES[cityKey] || null;
+    const resolvedKey = normalizeCityName(cityKey).toLowerCase();
+    const cityCoords = KNOWN_CITIES[resolvedKey] || KNOWN_CITIES[cityKey] || null;
 
     return liveCityFilteredOffers.map((offer) => {
       let distanceKm: number | undefined = undefined;
@@ -426,7 +460,7 @@ export default function HomePage() {
                       {isSearchingCity && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Fetching...</span>
+                          <span>Searching...</span>
                         </span>
                       )}
                     </div>
@@ -442,7 +476,7 @@ export default function HomePage() {
                           handleCitySearchSubmit();
                         }
                       }}
-                      placeholder="e.g. New York, Tokyo, London, Paris, Rome, Lahore..."
+                      placeholder="e.g. Tokyo, New York, London, Paris, Lahore, Burewala..."
                       className="w-full text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
                     />
                   </div>
@@ -472,7 +506,7 @@ export default function HomePage() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Pizza, ramen, coffee, massage, gym..."
+                      placeholder="Ramen, sushi, pizza, coffee, massage..."
                       className="w-full text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
                     />
                   </div>
@@ -504,9 +538,9 @@ export default function HomePage() {
                 {showCitySuggestions && (
                   <div
                     ref={suggestionsRef}
-                    className="absolute top-full left-0 right-0 md:left-2 md:w-80 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-left max-h-80 overflow-y-auto"
+                    className="absolute top-full left-0 right-0 md:left-2 md:w-88 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-left max-h-80 overflow-y-auto"
                   >
-                    <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 pb-2">
                       <span>Click to Fetch City Deals</span>
                       <button
                         type="button"
@@ -526,7 +560,7 @@ export default function HomePage() {
                         e.preventDefault();
                         handleSelectCity('');
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition font-bold"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition font-bold"
                     >
                       <div className="flex items-center gap-2">
                         <span>🌍</span>
@@ -546,9 +580,11 @@ export default function HomePage() {
                         className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition text-left"
                       >
                         <div className="flex items-center gap-2">
-                          <span>{c.flag}</span>
-                          <span className="font-semibold">{c.name}</span>
-                          <span className="text-[11px] text-slate-400">({c.country})</span>
+                          <span className="text-base">{c.flag}</span>
+                          <div>
+                            <span className="font-semibold text-slate-900">{c.name}</span>
+                            <span className="text-[11px] text-slate-400 ml-1.5">({c.country})</span>
+                          </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </button>
@@ -810,7 +846,7 @@ export default function HomePage() {
                 >
                   Explore All Worldwide Deals
                 </button>
-                {['New York', 'London', 'Tokyo', 'Paris', 'Rome', 'Dubai', 'Sydney'].map((c) => (
+                {['Tokyo', 'New York', 'London', 'Paris', 'Lahore', 'Burewala', 'Chichawatni', 'Dubai', 'Rome'].map((c) => (
                   <button
                     key={c}
                     onClick={() => handleSelectCity(c)}

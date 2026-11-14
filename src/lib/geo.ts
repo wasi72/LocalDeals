@@ -57,6 +57,14 @@ export const KNOWN_CITIES: Record<string, CityInfo> = {
     latitude: 35.6762,
     longitude: 139.6503,
   },
+  tokio: {
+    name: 'Tokyo (Japan)',
+    country: 'Japan',
+    flag: '🇯🇵',
+    currency: 'JPY',
+    latitude: 35.6762,
+    longitude: 139.6503,
+  },
   paris: {
     name: 'Paris (France)',
     country: 'France',
@@ -200,6 +208,22 @@ export const KNOWN_CITIES: Record<string, CityInfo> = {
     currency: 'PKR',
     latitude: 24.8607,
     longitude: 67.0011,
+  },
+  burewala: {
+    name: 'Burewala (Pakistan)',
+    country: 'Pakistan',
+    flag: '🇵🇰',
+    currency: 'PKR',
+    latitude: 30.1587,
+    longitude: 72.6784,
+  },
+  chichawatni: {
+    name: 'Chichawatni (Pakistan)',
+    country: 'Pakistan',
+    flag: '🇵🇰',
+    currency: 'PKR',
+    latitude: 30.5333,
+    longitude: 72.7001,
   },
   mumbai: {
     name: 'Mumbai (India)',
