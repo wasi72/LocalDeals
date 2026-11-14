@@ -65,6 +65,13 @@ export default function Navbar({
     { label: '🇩🇪 Berlin (Germany)', value: 'Berlin' },
     { label: '🇦🇺 Sydney (Australia)', value: 'Sydney' },
     { label: '🇦🇪 Dubai (UAE)', value: 'Dubai' },
+    { label: '🇨🇦 Toronto (Canada)', value: 'Toronto' },
+    { label: '🇸🇬 Singapore', value: 'Singapore' },
+    { label: '🇮🇹 Rome (Italy)', value: 'Rome' },
+    { label: '🇺🇸 Los Angeles (USA)', value: 'Los Angeles' },
+    { label: '🇺🇸 Chicago (USA)', value: 'Chicago' },
+    { label: '🇪🇸 Barcelona (Spain)', value: 'Barcelona' },
+    { label: '🇵🇰 Lahore (Pakistan)', value: 'Lahore' },
   ];
 
   return (
@@ -92,7 +99,14 @@ export default function Navbar({
               <Globe2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <select
                 value={selectedCity}
-                onChange={(e) => onCityChange && onCityChange(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (onCityChange) {
+                    onCityChange(val);
+                  } else {
+                    router.push(val === 'all' ? '/' : `/?city=${encodeURIComponent(val)}`);
+                  }
+                }}
                 className="bg-transparent border-none text-slate-800 font-semibold focus:outline-none cursor-pointer"
               >
                 {cities.map((c) => (

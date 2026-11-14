@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Sparkles,
@@ -21,7 +22,8 @@ import {
   Wrench,
   Ticket,
   ChevronRight,
-  Building,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import OfferCard from '@/components/OfferCard';
 import OfferModal from '@/components/OfferModal';
@@ -48,13 +50,52 @@ const POPULAR_CITIES = [
   { label: '🇩🇪 Berlin', city: 'Berlin' },
   { label: '🇦🇺 Sydney', city: 'Sydney' },
   { label: '🇦🇪 Dubai', city: 'Dubai' },
+  { label: '🇨🇦 Toronto', city: 'Toronto' },
+  { label: '🇸🇬 Singapore', city: 'Singapore' },
+  { label: '🇮🇹 Rome', city: 'Rome' },
+  { label: '🇪🇸 Barcelona', city: 'Barcelona' },
+  { label: '🇵🇰 Lahore', city: 'Lahore' },
+  { label: '🇺🇸 Los Angeles', city: 'Los Angeles' },
+];
+
+const KNOWN_SUGGESTIONS = [
+  { name: 'New York', country: 'United States', flag: '🇺🇸' },
+  { name: 'London', country: 'United Kingdom', flag: '🇬🇧' },
+  { name: 'Tokyo', country: 'Japan', flag: '🇯🇵' },
+  { name: 'Paris', country: 'France', flag: '🇫🇷' },
+  { name: 'Berlin', country: 'Germany', flag: '🇩🇪' },
+  { name: 'Sydney', country: 'Australia', flag: '🇦🇺' },
+  { name: 'Dubai', country: 'United Arab Emirates', flag: '🇦🇪' },
+  { name: 'Toronto', country: 'Canada', flag: '🇨🇦' },
+  { name: 'Singapore', country: 'Singapore', flag: '🇸🇬' },
+  { name: 'Rome', country: 'Italy', flag: '🇮🇹' },
+  { name: 'Los Angeles', country: 'United States', flag: '🇺🇸' },
+  { name: 'Chicago', country: 'United States', flag: '🇺🇸' },
+  { name: 'San Francisco', country: 'United States', flag: '🇺🇸' },
+  { name: 'Barcelona', country: 'Spain', flag: '🇪🇸' },
+  { name: 'Madrid', country: 'Spain', flag: '🇪🇸' },
+  { name: 'Amsterdam', country: 'Netherlands', flag: '🇳🇱' },
+  { name: 'Lahore', country: 'Pakistan', flag: '🇵🇰' },
+  { name: 'Karachi', country: 'Pakistan', flag: '🇵🇰' },
+  { name: 'Mumbai', country: 'India', flag: '🇮🇳' },
+  { name: 'Melbourne', country: 'Australia', flag: '🇦🇺' },
+  { name: 'Vienna', country: 'Austria', flag: '🇦🇹' },
+  { name: 'Seoul', country: 'South Korea', flag: '🇰🇷' },
+  { name: 'Bangkok', country: 'Thailand', flag: '🇹🇭' },
+  { name: 'São Paulo', country: 'Brazil', flag: '🇧🇷' },
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+
+  // Master cache of all worldwide offers
+  const [worldwideOffers, setWorldwideOffers] = useState<any[]>([]);
+  // Current active offers displayed
   const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Dedicated City Input & Active City State
+  const [isSearchingCity, setIsSearchingCity] = useState(false);
+
+  // Dedicated City State
   const [cityInput, setCityInput] = useState('');
   const [activeCity, setActiveCity] = useState('');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
@@ -71,85 +112,206 @@ export default function HomePage() {
   const [reportOffer, setReportOffer] = useState<any | null>(null);
 
   const cityInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch deals function - supports explicit city name
-  const fetchDeals = async (cityToFetch = activeCity) => {
+  // Core Server Fetch: queries /api/offers with optional city parameter
+  const fetchDealsFromServer = useCallback(async (cityName = '', background = false) => {
     try {
-      setLoading(true);
-      const trimmed = cityToFetch.trim();
+      if (!background) {
+        setLoading(true);
+      }
+      setIsSearchingCity(true);
+
+      const trimmed = cityName.trim();
       let url = '/api/offers';
       if (trimmed && trimmed.toLowerCase() !== 'all' && trimmed.toLowerCase() !== 'worldwide') {
         url += `?city=${encodeURIComponent(trimmed)}`;
       }
+
       const res = await fetch(url);
       const data = await res.json();
-      if (data.success) {
+
+      if (data.success && Array.isArray(data.offers)) {
         setOffers(data.offers);
+        // If this was a full worldwide fetch, save as master cache
+        if (!trimmed) {
+          setWorldwideOffers(data.offers);
+        }
       }
     } catch (err) {
-      console.error('Failed to load offers', err);
+      console.error('Failed to load offers from server', err);
     } finally {
       setLoading(false);
+      setIsSearchingCity(false);
+    }
+  }, []);
+
+  // Initial load: parse URL query ?city=... if present, else fetch all worldwide
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const initialCity = params.get('city');
+      if (initialCity && initialCity.toLowerCase() !== 'all') {
+        setCityInput(initialCity);
+        setActiveCity(initialCity);
+        fetchDealsFromServer(initialCity, false);
+        return;
+      }
+    }
+    fetchDealsFromServer('', false);
+  }, [fetchDealsFromServer]);
+
+  // Handle clicking outside suggestions dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        cityInputRef.current &&
+        !cityInputRef.current.contains(event.target as Node)
+      ) {
+        setShowCitySuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounced auto-fetch as the user types into cityInput
+  const handleCityInputChange = (val: string) => {
+    setCityInput(val);
+    setShowCitySuggestions(true);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    const trimmed = val.trim();
+    if (!trimmed) {
+      // Input cleared: immediately restore worldwide offers
+      setActiveCity('');
+      if (worldwideOffers.length > 0) {
+        setOffers(worldwideOffers);
+      } else {
+        fetchDealsFromServer('', true);
+      }
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', '/');
+      }
+      return;
+    }
+
+    // After 400ms pause, automatically query server for the entered city
+    debounceTimerRef.current = setTimeout(() => {
+      setActiveCity(trimmed);
+      fetchDealsFromServer(trimmed, true);
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', `/?city=${encodeURIComponent(trimmed)}`);
+      }
+    }, 450);
+  };
+
+  // Explicit Trigger search by city (Form submit or Enter key or Button click)
+  const handleCitySearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    setShowCitySuggestions(false);
+    const target = cityInput.trim();
+    setActiveCity(target);
+    fetchDealsFromServer(target, false);
+
+    if (typeof window !== 'undefined') {
+      const url = target ? `/?city=${encodeURIComponent(target)}` : '/';
+      window.history.pushState({}, '', url);
     }
   };
 
-  // Initial load: fetch all deals worldwide
-  useEffect(() => {
-    fetchDeals('');
-  }, []);
-
-  // Handle City Search Form Submit
-  const handleCitySearch = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setShowCitySuggestions(false);
-    const targetCity = cityInput.trim();
-    setActiveCity(targetCity);
-    fetchDeals(targetCity);
-  };
-
-  // Handle Quick City Pill Click
-  const handleSelectQuickCity = (cityName: string) => {
+  // Quick Select a City (Pills or Suggestions)
+  const handleSelectCity = (cityName: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     setCityInput(cityName);
     setActiveCity(cityName);
     setShowCitySuggestions(false);
-    fetchDeals(cityName);
+    fetchDealsFromServer(cityName, false);
+
+    if (typeof window !== 'undefined') {
+      const url = cityName ? `/?city=${encodeURIComponent(cityName)}` : '/';
+      window.history.pushState({}, '', url);
+    }
   };
 
   // Reset to Worldwide
   const handleResetToWorldwide = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     setCityInput('');
     setActiveCity('');
     setSearchQuery('');
     setSelectedCategory('all');
     setMinDiscount(0);
     setOnlyEndingSoon(false);
-    fetchDeals('');
+    setShowCitySuggestions(false);
+
+    if (worldwideOffers.length > 0) {
+      setOffers(worldwideOffers);
+    } else {
+      fetchDealsFromServer('', false);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+    }
   };
 
-  // Autocomplete suggestions based on available cities
+  // Autocomplete suggestions
   const citySuggestions = useMemo(() => {
-    const list = [
-      { name: 'New York', country: 'United States', flag: '🇺🇸' },
-      { name: 'London', country: 'United Kingdom', flag: '🇬🇧' },
-      { name: 'Tokyo', country: 'Japan', flag: '🇯🇵' },
-      { name: 'Paris', country: 'France', flag: '🇫🇷' },
-      { name: 'Berlin', country: 'Germany', flag: '🇩🇪' },
-      { name: 'Sydney', country: 'Australia', flag: '🇦🇺' },
-      { name: 'Dubai', country: 'United Arab Emirates', flag: '🇦🇪' },
-    ];
-    if (!cityInput.trim()) return list;
+    if (!cityInput.trim()) return KNOWN_SUGGESTIONS;
     const q = cityInput.toLowerCase();
-    return list.filter(
+    return KNOWN_SUGGESTIONS.filter(
       (c) => c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)
     );
   }, [cityInput]);
 
-  // Enrich with distance if a known city coordinates match
-  const enrichedOffers = useMemo(() => {
-    const cityKey = activeCity.toLowerCase();
-    const cityCoords = KNOWN_CITIES[cityKey] || (activeCity ? KNOWN_CITIES.paris : null);
+  // Real-time client-side matching across current offers
+  const liveCityFilteredOffers = useMemo(() => {
+    const filterQuery = cityInput.trim().toLowerCase();
 
-    return offers.map((offer) => {
+    // If city input is empty, return whatever offers were returned for activeCity or worldwide
+    if (!filterQuery || filterQuery === 'all' || filterQuery === 'worldwide') {
+      return offers;
+    }
+
+    // If typing, first check if current offers contain matches
+    const matched = offers.filter((offer) => {
+      const c = offer.business?.city?.toLowerCase() || '';
+      const country = offer.business?.country?.toLowerCase() || '';
+      const address = offer.business?.address?.toLowerCase() || '';
+      const postcode = offer.business?.postcode?.toLowerCase() || '';
+      return (
+        c.includes(filterQuery) ||
+        country.includes(filterQuery) ||
+        address.includes(filterQuery) ||
+        postcode.includes(filterQuery)
+      );
+    });
+
+    // If matched has items, show them immediately; otherwise return current offers (server fetch in progress)
+    return matched.length > 0 ? matched : offers;
+  }, [offers, cityInput]);
+
+  // Calculate distance relative to active city
+  const enrichedOffers = useMemo(() => {
+    const cityKey = (activeCity || cityInput).trim().toLowerCase();
+    const cityCoords = KNOWN_CITIES[cityKey] || null;
+
+    return liveCityFilteredOffers.map((offer) => {
       let distanceKm: number | undefined = undefined;
       if (cityCoords && cityCoords.latitude !== 0 && offer.business?.latitude && offer.business?.longitude) {
         distanceKm = calculateHaversineDistanceKm(
@@ -161,17 +323,17 @@ export default function HomePage() {
       }
       return { ...offer, distanceKm };
     });
-  }, [offers, activeCity]);
+  }, [liveCityFilteredOffers, activeCity, cityInput]);
 
-  // Client-side category & query filtering
-  const filteredOffers = useMemo(() => {
+  // Combined filters: keyword search, category, discount, urgency
+  const finalFilteredOffers = useMemo(() => {
     return enrichedOffers.filter((offer) => {
       // Keyword query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchTitle = offer.title.toLowerCase().includes(q);
-        const matchDesc = offer.description.toLowerCase().includes(q);
-        const matchBiz = offer.business?.name.toLowerCase().includes(q);
+        const matchTitle = offer.title?.toLowerCase().includes(q);
+        const matchDesc = offer.description?.toLowerCase().includes(q);
+        const matchBiz = offer.business?.name?.toLowerCase().includes(q);
         if (!matchTitle && !matchDesc && !matchBiz) return false;
       }
 
@@ -199,19 +361,19 @@ export default function HomePage() {
 
   // Featured Offers
   const featuredOffers = useMemo(() => {
-    return enrichedOffers.filter((o) => o.isFeatured).slice(0, 3);
-  }, [enrichedOffers]);
+    return finalFilteredOffers.filter((o) => o.isFeatured).slice(0, 3);
+  }, [finalFilteredOffers]);
 
   // Ending Soon Offers
   const endingSoonOffers = useMemo(() => {
     const now = new Date();
-    return enrichedOffers
+    return finalFilteredOffers
       .filter((o) => {
         const diffDays = Math.ceil((new Date(o.endsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays <= 7 && diffDays >= 0;
       })
       .slice(0, 3);
-  }, [enrichedOffers]);
+  }, [finalFilteredOffers]);
 
   const categories = [
     { label: 'All Categories', slug: 'all', icon: Tag },
@@ -222,6 +384,8 @@ export default function HomePage() {
     { label: 'Boutiques & Shops', slug: 'boutiques-specialty-shops', icon: ShoppingBag },
     { label: 'Local Services', slug: 'services-artisans', icon: Wrench },
   ];
+
+  const currentDisplayCity = cityInput.trim() || activeCity.trim();
 
   return (
     <div className="space-y-12 pb-16">
@@ -242,43 +406,55 @@ export default function HomePage() {
             </h1>
 
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
-              Type the name of any city to discover authentic promotions from independent neighborhood bakeries, pizzerias, ramen bars, spas, and boutique fitness studios.
+              Type the name of any city in the world to instantly discover and fetch authentic promotions from independent neighborhood bakeries, pizzerias, ramen bars, spas, and boutique fitness studios.
             </p>
 
-            {/* Dedicated City & Deal Search Box */}
+            {/* Dedicated City & Deal Search Form */}
             <div className="pt-4 max-w-3xl mx-auto">
               <form
-                onSubmit={handleCitySearch}
+                onSubmit={handleCitySearchSubmit}
                 className="relative p-2 bg-white rounded-3xl shadow-xl border border-slate-200/90 flex flex-col md:flex-row items-center gap-2"
               >
-                {/* 1. Enter City Name Field */}
-                <div className="relative flex-1 flex items-center gap-2.5 px-3.5 py-1.5 w-full border-b md:border-b-0 md:border-r border-slate-200">
+                {/* 1. Enter City Name Field with Real-Time Fetching */}
+                <div className="relative flex-1 flex items-center gap-2.5 px-3.5 py-2 w-full border-b md:border-b-0 md:border-r border-slate-200">
                   <MapPin className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div className="flex-1 text-left">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      City Name
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Enter City Name
+                      </label>
+                      {isSearchingCity && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Fetching...</span>
+                        </span>
+                      )}
+                    </div>
                     <input
                       ref={cityInputRef}
                       type="text"
                       value={cityInput}
-                      onChange={(e) => {
-                        setCityInput(e.target.value);
-                        setShowCitySuggestions(true);
-                      }}
+                      onChange={(e) => handleCityInputChange(e.target.value)}
                       onFocus={() => setShowCitySuggestions(true)}
-                      placeholder="e.g. New York, Tokyo, London, Paris..."
-                      className="w-full text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCitySearchSubmit();
+                        }
+                      }}
+                      placeholder="e.g. New York, Tokyo, London, Paris, Rome, Lahore..."
+                      className="w-full text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
                     />
                   </div>
                   {cityInput && (
                     <button
                       type="button"
                       onClick={() => {
-                        setCityInput('');
+                        handleCityInputChange('');
                         cityInputRef.current?.focus();
                       }}
                       className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                      title="Clear city input"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -286,7 +462,7 @@ export default function HomePage() {
                 </div>
 
                 {/* 2. Optional Deal Keyword Field */}
-                <div className="flex-1 flex items-center gap-2.5 px-3.5 py-1.5 w-full">
+                <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2 w-full">
                   <Search className="w-5 h-5 text-slate-400 shrink-0" />
                   <div className="flex-1 text-left">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -296,7 +472,7 @@ export default function HomePage() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Pizza, ramen, massage, hair, gym..."
+                      placeholder="Pizza, ramen, coffee, massage, gym..."
                       className="w-full text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none bg-transparent"
                     />
                   </div>
@@ -314,20 +490,30 @@ export default function HomePage() {
                 {/* 3. Action Submit Button */}
                 <button
                   type="submit"
-                  className="w-full md:w-auto px-7 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/25 transition transform active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                  className="w-full md:w-auto px-7 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/25 transition transform active:scale-95 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                 >
-                  <Search className="w-4 h-4" />
+                  {isSearchingCity ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
                   <span>Fetch City Deals</span>
                 </button>
 
                 {/* Autocomplete City Suggestions Dropdown */}
                 {showCitySuggestions && (
-                  <div className="absolute top-full left-0 right-0 md:left-2 md:w-80 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-left">
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute top-full left-0 right-0 md:left-2 md:w-80 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-left max-h-80 overflow-y-auto"
+                  >
                     <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                      <span>Select or Click a City</span>
+                      <span>Click to Fetch City Deals</span>
                       <button
                         type="button"
-                        onClick={() => setShowCitySuggestions(false)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setShowCitySuggestions(false);
+                        }}
                         className="text-slate-400 hover:text-slate-600"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -336,8 +522,11 @@ export default function HomePage() {
 
                     <button
                       type="button"
-                      onClick={() => handleSelectQuickCity('')}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition font-semibold"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectCity('');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition font-bold"
                     >
                       <div className="flex items-center gap-2">
                         <span>🌍</span>
@@ -350,8 +539,11 @@ export default function HomePage() {
                       <button
                         key={c.name}
                         type="button"
-                        onClick={() => handleSelectQuickCity(c.name)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectCity(c.name);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-emerald-50 text-slate-800 transition text-left"
                       >
                         <div className="flex items-center gap-2">
                           <span>{c.flag}</span>
@@ -372,12 +564,14 @@ export default function HomePage() {
                   Quick cities:
                 </span>
                 {POPULAR_CITIES.map((pill) => {
-                  const isSelected = (!activeCity && !pill.city) || (activeCity.toLowerCase() === pill.city.toLowerCase());
+                  const isSelected =
+                    (!currentDisplayCity && !pill.city) ||
+                    (currentDisplayCity.toLowerCase() === pill.city.toLowerCase());
                   return (
                     <button
                       key={pill.label}
-                      onClick={() => handleSelectQuickCity(pill.city)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                      onClick={() => handleSelectCity(pill.city)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
                         isSelected
                           ? 'bg-slate-900 text-white shadow-sm'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -389,7 +583,7 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* Quick discount pills */}
+              {/* Quick discount pills & ending soon */}
               <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500 flex-wrap">
                 <span className="font-semibold text-slate-600 flex items-center gap-1">
                   <Percent className="w-3 h-3 text-emerald-600" />
@@ -399,7 +593,7 @@ export default function HomePage() {
                   <button
                     key={pct}
                     onClick={() => setMinDiscount(pct)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       minDiscount === pct
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
@@ -411,9 +605,9 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setOnlyEndingSoon(!onlyEndingSoon)}
-                  className={`ml-2 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  className={`ml-2 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                     onlyEndingSoon
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-amber-500 text-white shadow-sm'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                   }`}
                 >
@@ -437,7 +631,7 @@ export default function HomePage() {
                 <button
                   key={cat.slug}
                   onClick={() => setSelectedCategory(cat.slug)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
                     isSelected
                       ? 'bg-emerald-600 text-white shadow-emerald-600/20'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -454,39 +648,46 @@ export default function HomePage() {
         {/* Active City Filter Status Banner */}
         <section className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              {activeCity ? <MapPin className="w-5 h-5 text-emerald-600" /> : <Globe2 className="w-5 h-5 text-emerald-600" />}
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+              {currentDisplayCity ? <MapPin className="w-5 h-5 text-emerald-600" /> : <Globe2 className="w-5 h-5 text-emerald-600" />}
             </div>
             <div>
-              <div className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <div className="text-sm font-extrabold text-slate-900 flex items-center gap-2 flex-wrap">
                 <span>
-                  {activeCity ? `Offers in "${activeCity}"` : 'All Offers Worldwide'}
+                  {currentDisplayCity ? `Active City: "${currentDisplayCity}"` : 'Active Location: Worldwide (All Offers)'}
                 </span>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
-                  {filteredOffers.length} {filteredOffers.length === 1 ? 'deal found' : 'deals found'}
-                </span>
+                {isSearchingCity ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Fetching live deals...</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
+                    {finalFilteredOffers.length} {finalFilteredOffers.length === 1 ? 'deal available' : 'deals available'}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500">
-                {activeCity
-                  ? `Showing all verified promotions available in ${activeCity}.`
-                  : 'Displaying verified independent merchant promotions across all global hubs.'}
+              <p className="text-xs text-slate-500 mt-0.5">
+                {currentDisplayCity
+                  ? `Displaying verified promotions fetched for "${currentDisplayCity}".`
+                  : 'Displaying promotions across all verified global independent businesses.'}
               </p>
             </div>
           </div>
 
-          {activeCity && (
+          {currentDisplayCity && (
             <button
               onClick={handleResetToWorldwide}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer shrink-0"
             >
-              <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
               <span>Show All Worldwide Deals</span>
             </button>
           )}
         </section>
 
-        {/* Featured Deals Section (when not filtered by city) */}
-        {!activeCity && !searchQuery && selectedCategory === 'all' && minDiscount === 0 && !onlyEndingSoon && (
+        {/* Featured Deals Section (when not deeply filtered) */}
+        {!currentDisplayCity && !searchQuery && selectedCategory === 'all' && minDiscount === 0 && !onlyEndingSoon && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -514,7 +715,7 @@ export default function HomePage() {
         )}
 
         {/* Ending Soon Section (if not already filtered) */}
-        {!onlyEndingSoon && !activeCity && selectedCategory === 'all' && !searchQuery && endingSoonOffers.length > 0 && (
+        {!onlyEndingSoon && !currentDisplayCity && selectedCategory === 'all' && !searchQuery && endingSoonOffers.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -528,7 +729,7 @@ export default function HomePage() {
               </div>
               <button
                 onClick={() => setOnlyEndingSoon(true)}
-                className="text-xs font-bold text-amber-600 hover:text-amber-700 inline-flex items-center gap-1"
+                className="text-xs font-bold text-amber-600 hover:text-amber-700 inline-flex items-center gap-1 cursor-pointer"
               >
                 View all expiring
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -548,64 +749,34 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Main Deals Grid: All Offers for the Selected City / Worldwide */}
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+        {/* Main Grid: All Active / City-Filtered Deals */}
+        <section id="offers" className="space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                <Tag className="w-5 h-5 text-emerald-600" />
-                {activeCity ? `All Offers in ${activeCity}` : 'All Offers Worldwide'}
+              <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                <Store className="w-6 h-6 text-emerald-600" />
+                {currentDisplayCity
+                  ? `Local Deals in ${currentDisplayCity}`
+                  : 'All Verified Worldwide Neighborhood Deals'}
               </h2>
-              <p className="text-xs text-slate-500">
-                {filteredOffers.length} {filteredOffers.length === 1 ? 'promotion available' : 'promotions available'}
-                {selectedCategory !== 'all' && ` in this category`}
+              <p className="text-xs text-slate-500 mt-1">
+                {currentDisplayCity
+                  ? `Explore verified local deals available in ${currentDisplayCity}.`
+                  : 'Guaranteed minimum 20% discount with no fake markups or hidden fees.'}
               </p>
             </div>
-
-            {/* Clear filters shortcut */}
-            {(searchQuery || selectedCategory !== 'all' || minDiscount > 0 || onlyEndingSoon || activeCity) && (
-              <button
-                onClick={handleResetToWorldwide}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline"
-              >
-                Reset all filters (Show All Worldwide)
-              </button>
-            )}
           </div>
 
           {loading ? (
-            <div className="py-16 text-center text-slate-500 space-y-2">
-              <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs font-semibold">
-                {activeCity ? `Fetching deals in ${activeCity}...` : 'Loading worldwide deals...'}
+            <div className="py-20 text-center space-y-4">
+              <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mx-auto" />
+              <p className="text-sm font-bold text-slate-600">
+                Fetching authentic deals{currentDisplayCity ? ` for ${currentDisplayCity}` : ''}...
               </p>
             </div>
-          ) : filteredOffers.length === 0 ? (
-            <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8 space-y-4">
-              <Building className="w-12 h-12 text-slate-300 mx-auto" />
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-800">
-                  {activeCity
-                    ? `No active offers found in "${activeCity}" yet`
-                    : 'No deals match your search criteria'}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                  {activeCity
-                    ? `We haven't launched promotions in ${activeCity} yet, or all vouchers for this city have been claimed. Try searching another city or view all worldwide deals.`
-                    : 'Try selecting another city or widening your filters to discover deals.'}
-                </p>
-              </div>
-              <button
-                onClick={handleResetToWorldwide}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition"
-              >
-                <Globe2 className="w-4 h-4" />
-                <span>Browse All Worldwide Offers</span>
-              </button>
-            </div>
-          ) : (
+          ) : finalFilteredOffers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOffers.map((offer) => (
+              {finalFilteredOffers.map((offer) => (
                 <OfferCard
                   key={offer.id}
                   offer={offer}
@@ -614,39 +785,63 @@ export default function HomePage() {
                 />
               ))}
             </div>
+          ) : (
+            <div className="py-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 space-y-5">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                <MapPin className="w-8 h-8" />
+              </div>
+              <div className="space-y-2 max-w-md mx-auto">
+                <h3 className="text-lg font-extrabold text-slate-900">
+                  {currentDisplayCity
+                    ? `No deals currently found for "${currentDisplayCity}"`
+                    : 'No offers match your criteria'}
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {currentDisplayCity
+                    ? `We are expanding rapidly. Try another city name, select one of the popular hubs below, or explore all worldwide offers.`
+                    : 'Try relaxing your search terms, choosing a different category, or lowering the minimum discount.'}
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={handleResetToWorldwide}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                >
+                  Explore All Worldwide Deals
+                </button>
+                {['New York', 'London', 'Tokyo', 'Paris', 'Rome', 'Dubai', 'Sydney'].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => handleSelectCity(c)}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </section>
 
-        {/* Merchant Pilot Promotion Banner */}
-        <section className="bg-gradient-to-r from-emerald-900 to-teal-950 text-white rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden">
+        {/* Trust & Guarantee Banner */}
+        <section className="bg-slate-900 rounded-3xl p-8 sm:p-12 text-white relative overflow-hidden">
           <div className="relative z-10 max-w-2xl space-y-4">
-            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-extrabold rounded-full uppercase tracking-wider inline-block">
-              Independent Merchants Worldwide
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Grow foot traffic in your local store with our 100% free pilot
-            </h2>
-            <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-              Whether you run a pizzeria in New York, a ramen shop in Tokyo, an artisan bakery in Paris, or a fitness studio in London—join LocalDeals without upfront fees or commissions. Publish a welcome special and greet new nearby customers today.
-            </p>
-            <div className="pt-2 flex flex-wrap items-center gap-4">
-              <Link
-                href="/commercant"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
-              >
-                <Store className="w-4 h-4" />
-                <span>Open Merchant Portal</span>
-              </Link>
-              <div className="flex items-center gap-2 text-xs text-emerald-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>0% Commission on In-Store Sales</span>
-              </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Independent & Protected</span>
             </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Honest neighborhood savings, zero subscription traps
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Every business is verified with real local credentials. Discounts are locked in native currency with integer-cents accuracy and tamper-resistant cryptographic QR vouchers. Pay directly at the cash counter upon redemption.
+            </p>
           </div>
         </section>
       </div>
 
-      {/* Offer Detail Modal */}
+      {/* Detail, Redemption & Report Modals */}
       {activeOffer && (
         <OfferModal
           offer={activeOffer}
@@ -662,7 +857,6 @@ export default function HomePage() {
         />
       )}
 
-      {/* Redemption Voucher Modal */}
       {redeemOffer && (
         <RedemptionModal
           offer={redeemOffer}
@@ -670,7 +864,6 @@ export default function HomePage() {
         />
       )}
 
-      {/* Report Issue Modal */}
       {reportOffer && (
         <ReportModal
           offer={reportOffer}

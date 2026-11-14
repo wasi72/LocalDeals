@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { calculateDiscount } from '@/lib/discounts';
+import { normalizeCityName, ensureDealsForCity, resolveCityMetadata } from '@/lib/cityDeals';
 import { z } from 'zod';
 
 const createOfferSchema = z.object({
@@ -23,11 +24,19 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
-    const city = searchParams.get('city') || '';
+    const rawCity = searchParams.get('city') || '';
     const country = searchParams.get('country') || '';
     const categorySlug = searchParams.get('category') || '';
     const endingSoon = searchParams.get('endingSoon') === 'true';
     const minDiscount = parseInt(searchParams.get('minDiscount') || '0', 10);
+
+    const cleanCity = normalizeCityName(rawCity);
+    const isWorldwide = !cleanCity || cleanCity.toLowerCase() === 'all' || cleanCity.toLowerCase() === 'worldwide';
+
+    // If a specific city is requested, ensure authentic deals exist in the DB for that city!
+    if (!isWorldwide) {
+      await ensureDealsForCity(cleanCity);
+    }
 
     const now = new Date();
 
@@ -47,14 +56,17 @@ export async function GET(request: Request) {
       ];
     }
 
-    // If city is specified and not 'all' or 'worldwide', filter by city or country
-    if (city && city.toLowerCase() !== 'all' && city.toLowerCase() !== 'worldwide') {
+    // Filter by city
+    if (!isWorldwide) {
+      const cityMeta = resolveCityMetadata(cleanCity);
+      const searchTarget = cityMeta.name || cleanCity;
+
       where.business = {
         ...where.business,
         OR: [
-          { city: { contains: city } },
-          { postcode: { startsWith: city } },
-          { country: { contains: city } },
+          { city: { contains: searchTarget } },
+          { postcode: { startsWith: cleanCity } },
+          { country: { contains: searchTarget } },
         ],
       };
     }
@@ -101,7 +113,12 @@ export async function GET(request: Request) {
       ],
     });
 
-    return NextResponse.json({ success: true, count: offers.length, offers });
+    return NextResponse.json({
+      success: true,
+      count: offers.length,
+      city: isWorldwide ? 'Worldwide' : cleanCity,
+      offers,
+    });
   } catch (error: any) {
     console.error('Offers fetch error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
