@@ -1,0 +1,19 @@
+services:
+  localdeals:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: localdeals-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:./dev.db
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - APP_ENV=production
+      - HMAC_SECRET=production-grade-hmac-sha256-key-30-year-veteran
+    volumes:
+      - localdeals-data:/app/prisma
+
+volumes:
+  localdeals-data:

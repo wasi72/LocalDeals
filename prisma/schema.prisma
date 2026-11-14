@@ -1,0 +1,203 @@
+// Prisma Schema for LocalDeals Platform
+// Multi-role marketplace (Residents, Merchants, Administrators)
+// Supports zero-config SQLite for local dev & testing, seamlessly swappable to PostgreSQL/Supabase for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  role         String       @default("RESIDENT") // RESIDENT, MERCHANT, ADMIN
+  phone        String?
+  avatarUrl    String?
+  city         String?
+  postcode     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  businesses   Business[]
+  favorites    Favorite[]
+  redemptions  Redemption[]
+  auditLogs    AuditLog[]
+}
+
+model Business {
+  id               String       @id @default(cuid())
+  ownerId          String
+  owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name             String
+  slug             String       @unique
+  description      String
+  siret            String?      // French business registration number (SIRET / RCS)
+  address          String
+  city             String
+  postcode         String
+  country          String       @default("France")
+  phone            String?
+  email            String?
+  website          String?
+  logoUrl          String?
+  coverUrl         String?
+  isVerified       Boolean      @default(false)
+  verifiedAt       DateTime?
+  status           String       @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
+  latitude         Float?
+  longitude        Float?
+  openingHours     String?      // JSON string of weekly opening hours
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  offers           Offer[]
+  subscriptions    Subscription[]
+
+  @@index([city])
+  @@index([postcode])
+  @@index([status])
+}
+
+model Category {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  icon         String   // Lucide icon identifier: Utensils, Scissors, Dumbbell, ShoppingBag, Coffee, Sparkles, Car, Beer
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  offers       Offer[]
+}
+
+model Offer {
+  id                  String       @id @default(cuid())
+  businessId          String
+  business            Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId          String
+  category            Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  
+  title               String
+  description         String
+  terms               String?      // Conditions, exclusions, e.g. "Dine-in only, max 1 per table"
+  
+  discountType        String       @default("PERCENTAGE") // PERCENTAGE, FIXED_AMOUNT, BOGO, PERK
+  originalPriceCents  Int?         // Integer cents (e.g. 2500 = €25.00)
+  discountPriceCents  Int?         // Integer cents (e.g. 1500 = €15.00)
+  discountPercentage  Int?         // e.g. 40 (%)
+  currency            String       @default("EUR")
+  
+  startsAt            DateTime     @default(now())
+  endsAt              DateTime
+  redemptionLimit     Int?         // Total voucher cap (null = unlimited)
+  redemptionCount     Int          @default(0)
+  
+  status              String       @default("APPROVED") // DRAFT, PENDING_REVIEW, APPROVED, REJECTED, PAUSED, EXPIRED
+  moderationReason    String?
+  isFeatured          Boolean      @default(false)
+  imageUrl            String?
+  viewsCount          Int          @default(0)
+  clicksCount         Int          @default(0)
+  
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  redemptions         Redemption[]
+  favorites           Favorite[]
+  reports             Report[]
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+model Redemption {
+  id             String    @id @default(cuid())
+  offerId        String
+  offer          Offer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  code           String    @unique // Human readable voucher code: e.g. LD-PARIS-7842
+  qrToken        String    @unique // Secure cryptographically signed token
+  status         String    @default("ACTIVE") // ACTIVE, USED, EXPIRED, CANCELLED
+  redeemedAt     DateTime?
+  expiresAt      DateTime
+  guestEmail     String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+
+  @@index([offerId])
+  @@index([code])
+  @@index([qrToken])
+  @@index([status])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offerId   String
+  offer     Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, offerId])
+  @@index([userId])
+}
+
+model Subscription {
+  id                     String    @id @default(cuid())
+  businessId             String
+  business               Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan                   String    @default("FREE_PILOT") // FREE_PILOT, STARTER, PRO
+  status                 String    @default("ACTIVE") // ACTIVE, CANCELLED, PAST_DUE
+  currentPeriodStart     DateTime  @default(now())
+  currentPeriodEnd       DateTime?
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([businessId])
+}
+
+model Report {
+  id             String    @id @default(cuid())
+  offerId        String
+  offer          Offer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  reporterEmail  String
+  reporterName   String?
+  reason         String    // MISLEADING_PRICE, EXPIRED_EARLY, BUSINESS_CLOSED, OFFENSIVE, OTHER
+  details        String
+  status         String    @default("PENDING") // PENDING, INVESTIGATING, RESOLVED, DISMISSED
+  resolutionNotes String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([offerId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorRole  String
+  action     String   // BUSINESS_VERIFIED, OFFER_APPROVED, OFFER_REJECTED, DEAL_PAUSED, REPORT_RESOLVED
+  targetType String   // BUSINESS, OFFER, REPORT, USER
+  targetId   String
+  details    String?  // JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([action])
+}
