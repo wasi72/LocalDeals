@@ -5,6 +5,7 @@
   "description": "LocalDeals — Discover genuine offers from local businesses near you",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
