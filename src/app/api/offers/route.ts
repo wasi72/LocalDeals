@@ -34,6 +34,11 @@ export async function GET(request: Request) {
     const cleanCity = normalizeCityName(rawCity);
     const isWorldwide = !cleanCity || cleanCity.toLowerCase() === 'all' || cleanCity.toLowerCase() === 'worldwide';
 
+    // Allow callers to specify limit (default 100 for worldwide, 600 for specific city)
+    const defaultLimit = isWorldwide ? 120 : 600;
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? Math.min(parseInt(limitParam, 10), 2000) : defaultLimit;
+
     const now = new Date();
 
     const buildWhere = (cityQuery = cleanCity) => {
@@ -97,9 +102,15 @@ export async function GET(request: Request) {
       return whereClause;
     };
 
-    // First attempt: Read-only query for existing offers
+    const where = buildWhere();
+
+    // Total count of matching offers
+    const totalCount = await prisma.offer.count({ where });
+
+    // Fetch batch up to limit
     let offers = await prisma.offer.findMany({
-      where: buildWhere(),
+      where,
+      take: limit,
       include: {
         business: true,
         category: true,
@@ -113,13 +124,13 @@ export async function GET(request: Request) {
       ],
     });
 
-    // If no offers found AND autoProvision is explicitly requested:
-    // Provision authentic deals safely with concurrency locks!
-    if (offers.length === 0 && !isWorldwide && autoProvision && cleanCity.length >= 3) {
+    // If 0 offers found and novel city requested with autoProvision:
+    if (totalCount === 0 && !isWorldwide && autoProvision && cleanCity.length >= 3) {
       await ensureDealsForCity(cleanCity);
-      // Re-query with updated DB records
+      const updatedWhere = buildWhere();
       offers = await prisma.offer.findMany({
-        where: buildWhere(),
+        where: updatedWhere,
+        take: limit,
         include: {
           business: true,
           category: true,
@@ -138,7 +149,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
+      totalCount: totalCount || offers.length,
       count: offers.length,
+      limit,
       city: isWorldwide ? 'Worldwide' : cityMeta.name || cleanCity,
       country: isWorldwide ? 'Global' : cityMeta.country,
       currency: isWorldwide ? 'USD' : cityMeta.currency,
@@ -169,7 +182,6 @@ export async function POST(request: Request) {
 
     const data = validated.data;
 
-    // Validate business ownership or admin
     const business = await prisma.business.findUnique({
       where: { id: data.businessId },
     });
@@ -185,7 +197,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Mathematical check
     const calc = calculateDiscount(data.originalPriceCents, data.discountPriceCents, data.currency);
     if (!calc.isValid) {
       return NextResponse.json(

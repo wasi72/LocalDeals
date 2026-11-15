@@ -43,21 +43,22 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 const POPULAR_CITIES = [
-  { label: '🌍 Worldwide (130+ Deals)', city: '' },
-  { label: '🇯🇵 Tokyo (12 Deals)', city: 'Tokyo' },
-  { label: '🇺🇸 New York (13 Deals)', city: 'New York' },
-  { label: '🇬🇧 London (12 Deals)', city: 'London' },
-  { label: '🇫🇷 Paris (13 Deals)', city: 'Paris' },
-  { label: '🇵🇰 Lahore (12 Deals)', city: 'Lahore' },
-  { label: '🇵🇰 Karachi (11 Deals)', city: 'Karachi' },
-  { label: '🇦🇪 Dubai (11 Deals)', city: 'Dubai' },
-  { label: '🇵🇰 Burewala (6 Deals)', city: 'Burewala' },
-  { label: '🇵🇰 Chichawatni (5 Deals)', city: 'Chichawatni' },
-  { label: '🇮🇹 Rome (8 Deals)', city: 'Rome' },
-  { label: '🇨🇦 Toronto (9 Deals)', city: 'Toronto' },
-  { label: '🇸🇬 Singapore (9 Deals)', city: 'Singapore' },
-  { label: '🇩🇪 Berlin', city: 'Berlin' },
-  { label: '🇦🇺 Sydney', city: 'Sydney' },
+  { label: '🌍 Worldwide (13,000+ Deals)', city: '' },
+  { label: '🇯🇵 Tokyo (500+ Deals)', city: 'Tokyo' },
+  { label: '🇺🇸 New York (500+ Deals)', city: 'New York' },
+  { label: '🇬🇧 London (500+ Deals)', city: 'London' },
+  { label: '🇫🇷 Paris (500+ Deals)', city: 'Paris' },
+  { label: '🇵🇰 Lahore (500+ Deals)', city: 'Lahore' },
+  { label: '🇵🇰 Karachi (500+ Deals)', city: 'Karachi' },
+  { label: '🇵🇰 Burewala (500+ Deals)', city: 'Burewala' },
+  { label: '🇵🇰 Chichawatni (500+ Deals)', city: 'Chichawatni' },
+  { label: '🇦🇪 Dubai (500+ Deals)', city: 'Dubai' },
+  { label: '🇮🇹 Rome (500+ Deals)', city: 'Rome' },
+  { label: '🇨🇦 Toronto (500+ Deals)', city: 'Toronto' },
+  { label: '🇸🇬 Singapore (500+ Deals)', city: 'Singapore' },
+  { label: '🇩🇪 Berlin (500+ Deals)', city: 'Berlin' },
+  { label: '🇦🇺 Sydney (500+ Deals)', city: 'Sydney' },
+  { label: '🇺🇸 Los Angeles (500+ Deals)', city: 'Los Angeles' },
 ];
 
 const KNOWN_SUGGESTIONS = [
@@ -119,6 +120,8 @@ export default function HomePage() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [visibleCount, setVisibleCount] = useState(36);
+
   // Core Server Fetch: queries /api/offers with optional city parameter
   const fetchDealsFromServer = useCallback(
     async (cityName = '', options: { background?: boolean; auto?: boolean } = {}) => {
@@ -135,9 +138,12 @@ export default function HomePage() {
 
         if (trimmed && trimmed.toLowerCase() !== 'all' && trimmed.toLowerCase() !== 'worldwide') {
           params.set('city', trimmed);
+          params.set('limit', '1200'); // Retrieve full city dataset (500+ deals!)
           if (auto) {
             params.set('auto', 'true');
           }
+        } else {
+          params.set('limit', '120'); // Retrieve top 120 deals for initial worldwide view
         }
 
         const qs = params.toString();
@@ -164,6 +170,11 @@ export default function HomePage() {
     },
     []
   );
+
+  // Reset visible pagination when filters or city change
+  useEffect(() => {
+    setVisibleCount(36);
+  }, [activeCity, cityInput, searchQuery, selectedCategory, minDiscount, onlyEndingSoon]);
 
   // Initial load: parse URL query ?city=... if present, else fetch all worldwide
   useEffect(() => {
@@ -812,15 +823,41 @@ export default function HomePage() {
               </p>
             </div>
           ) : finalFilteredOffers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {finalFilteredOffers.map((offer) => (
-                <OfferCard
-                  key={offer.id}
-                  offer={offer}
-                  distanceKm={offer.distanceKm}
-                  onSelect={(o) => setActiveOffer(o)}
-                />
-              ))}
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {finalFilteredOffers.slice(0, visibleCount).map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    distanceKm={offer.distanceKm}
+                    onSelect={(o) => setActiveOffer(o)}
+                  />
+                ))}
+              </div>
+
+              {/* Progressive Pagination Controls */}
+              {finalFilteredOffers.length > visibleCount && (
+                <div className="pt-4 text-center space-y-3">
+                  <div className="text-xs font-semibold text-slate-500">
+                    Showing <span className="font-bold text-slate-800">{visibleCount}</span> of{' '}
+                    <span className="font-bold text-emerald-600">{finalFilteredOffers.length}</span> deals available{currentDisplayCity ? ` in ${currentDisplayCity}` : ' worldwide'}
+                  </div>
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <button
+                      onClick={() => setVisibleCount((prev) => prev + 36)}
+                      className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition transform active:scale-95 cursor-pointer"
+                    >
+                      Load More Deals (+36)
+                    </button>
+                    <button
+                      onClick={() => setVisibleCount(finalFilteredOffers.length)}
+                      className="px-5 py-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 transition cursor-pointer"
+                    >
+                      Show All {finalFilteredOffers.length} Deals
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="py-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 space-y-5">
