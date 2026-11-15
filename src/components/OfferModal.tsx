@@ -55,10 +55,14 @@ export default function OfferModal({
   const flag = COUNTRY_FLAGS[offer.business?.country] || '📍';
 
   const handleShare = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.origin + `/?deal=${offer.id}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    try {
+      if (typeof window !== 'undefined' && navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(window.location.origin + `/?deal=${offer.id}`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err) {
+      console.warn('Clipboard write error:', err);
     }
   };
 

@@ -30,7 +30,7 @@ import OfferModal from '@/components/OfferModal';
 import RedemptionModal from '@/components/RedemptionModal';
 import ReportModal from '@/components/ReportModal';
 import { calculateHaversineDistanceKm, KNOWN_CITIES } from '@/lib/geo';
-import { normalizeCityName } from '@/lib/cityDeals';
+import { normalizeCityName } from '@/lib/cityUtils';
 
 const CATEGORY_ICONS: Record<string, any> = {
   Utensils,
@@ -227,7 +227,9 @@ export default function HomePage() {
         fetchDealsFromServer('', { background: true, auto: false });
       }
       if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', '/');
+        try {
+          window.history.pushState({}, '', '/');
+        } catch {}
       }
       return;
     }
@@ -238,7 +240,9 @@ export default function HomePage() {
       setActiveCity(resolved);
       fetchDealsFromServer(resolved, { background: true, auto: false });
       if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', `/?city=${encodeURIComponent(resolved)}`);
+        try {
+          window.history.pushState({}, '', `/?city=${encodeURIComponent(resolved)}`);
+        } catch {}
       }
     }, 350);
   };
@@ -257,8 +261,10 @@ export default function HomePage() {
     fetchDealsFromServer(target, { background: false, auto: true });
 
     if (typeof window !== 'undefined') {
-      const url = target ? `/?city=${encodeURIComponent(target)}` : '/';
-      window.history.pushState({}, '', url);
+      try {
+        const url = target ? `/?city=${encodeURIComponent(target)}` : '/';
+        window.history.pushState({}, '', url);
+      } catch {}
     }
   };
 
@@ -274,8 +280,10 @@ export default function HomePage() {
     fetchDealsFromServer(resolved, { background: false, auto: true });
 
     if (typeof window !== 'undefined') {
-      const url = resolved ? `/?city=${encodeURIComponent(resolved)}` : '/';
-      window.history.pushState({}, '', url);
+      try {
+        const url = resolved ? `/?city=${encodeURIComponent(resolved)}` : '/';
+        window.history.pushState({}, '', url);
+      } catch {}
     }
   };
 
@@ -299,7 +307,9 @@ export default function HomePage() {
     }
 
     if (typeof window !== 'undefined') {
-      window.history.pushState({}, '', '/');
+      try {
+        window.history.pushState({}, '', '/');
+      } catch {}
     }
   };
 

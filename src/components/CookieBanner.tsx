@@ -7,19 +7,33 @@ export default function CookieBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('ld_cookie_consent');
-    if (!consent) {
-      setShow(true);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const consent = window.localStorage.getItem('ld_cookie_consent');
+        if (!consent) {
+          setShow(true);
+        }
+      }
+    } catch {
+      // Storage access may be restricted in private/sandbox mode
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('ld_cookie_consent', 'accepted');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('ld_cookie_consent', 'accepted');
+      }
+    } catch {}
     setShow(false);
   };
 
   const handleRefuse = () => {
-    localStorage.setItem('ld_cookie_consent', 'essential_only');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('ld_cookie_consent', 'essential_only');
+      }
+    } catch {}
     setShow(false);
   };
 
