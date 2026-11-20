@@ -7,8 +7,9 @@
 ---
 
 ## 🌐 Live Public Demonstration
-- **Live URL:** [https://newer-galaxy-doors-fuel.trycloudflare.com](https://newer-galaxy-doors-fuel.trycloudflare.com)
+- **Live Deployment URL:** [https://normal-tells-publicity-secrets.trycloudflare.com](https://normal-tells-publicity-secrets.trycloudflare.com)
 - **GitHub Repository:** [https://github.com/wasi72/LocalDeals](https://github.com/wasi72/LocalDeals)
+- **CI/CD Pipeline:** Fully automated GitHub Actions workflow in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
 
 ---
 
@@ -21,7 +22,7 @@ LocalDeals connects customers and residents with genuine, verified promotions fr
 │                        LocalDeals Multi-Role UX                        │
 ├───────────────────────┬────────────────────────┬───────────────────────┤
 │    Resident Portal    │   Merchant Dashboard   │   Admin Moderation    │
-│  - Worldwide Feed     │  - KPI Analytics       │  - Offer Queue Audit  │
+│  - 13,000+ Global Feed│  - KPI Analytics       │  - Offer Queue Audit  │
 │  - City & Radius Geo  │  - Counter Validator   │  - Business Badging   │
 │  - 1-Click Voucher    │  - Multi-Currency Deal │  - User Reports       │
 │  - QR Code Generation │  - Live Math Preview   │  - Security Logs      │
@@ -46,40 +47,54 @@ LocalDeals connects customers and residents with genuine, verified promotions fr
 
 ## 💎 Worldwide Features & Engineering Choices
 
-1. **Worldwide Cities & Coverage**:
-   - 🌍 **Worldwide (All Cities)**: Shows all active offers globally.
-   - 🇺🇸 **New York (USA)**: DUMBO Brooklyn, SoHo Manhattan
-   - 🇬🇧 **London (UK)**: Covent Garden, Mayfair
-   - 🇯🇵 **Tokyo (Japan)**: Shinjuku, Shibuya
-   - 🇫🇷 **Paris (France)**: Oberkampf, Canal Saint-Martin
-   - 🇩🇪 **Berlin (Germany)**: Kreuzberg, Mitte
-   - 🇦🇺 **Sydney (Australia)**: Bondi Beach, Surry Hills
-   - 🇦🇪 **Dubai (UAE)**: Downtown Dubai, Marina
+1. **Massive Worldwide Coverage (13,000+ Deals across 5,645 Businesses)**:
+   - 🇯🇵 **Tokyo (Japan)**: 1,082 deals across Shinjuku, Shibuya, Ginza (¥ JPY)
+   - 🇺🇸 **New York (USA)**: 1,083 deals across DUMBO Brooklyn, SoHo, Manhattan ($ USD)
+   - 🇵🇰 **Lahore (Pakistan)**: 1,082 deals across Gulberg, DHA, Johar Town (Rs PKR)
+   - 🇬🇧 **London (UK)**: 1,082 deals across Covent Garden, Mayfair, Shoreditch (£ GBP)
+   - 🇫🇷 **Paris (France)**: 1,083 deals across Oberkampf, Canal Saint-Martin, Le Marais (€ EUR)
+   - 🇦🇪 **Dubai (UAE)**: 1,081 deals across Downtown, Marina, JBR (د.إ AED)
+   - 🇦🇺 **Sydney (Australia)**: 551 deals across Bondi Beach, Surry Hills ($ AUD)
+   - 🇮🇹 **Rome (Italy)**: 558 deals across Trastevere, Centro Storico (€ EUR)
+   - 🇵🇰 **Karachi (Pakistan)**: 1,081 deals across Clifton, Defence (Rs PKR)
+   - 🇵🇰 **Burewala (Pakistan)**: 1,076 deals across Model Town, Grain Market (Rs PKR)
+   - 🇵🇰 **Chichawatni (Pakistan)**: 1,075 deals across Main Bazaar, Railway Road (Rs PKR)
 
-2. **Integer-Cents Multi-Currency Math (`src/lib/discounts.ts`):**
+2. **Rich, Real-Time Offer Cards (`src/components/OfferCard.tsx`)**:
+   - **Full Street Address**: Exact merchant address with MapPin icon.
+   - **Dynamic "Open Now" / "Closed" Status**: Real-time evaluation against store opening hours with pulsing indicator.
+   - **Real-Time Demand Counters**: Live social proof (`XX claimed`, `XX viewing now`).
+   - **Urgency Expiry Countdown**: Dynamic pill (`Ends Tomorrow!`, `6 days left`).
+   - **Direct Actions**: Quick Call button (`tel:`) and Google Maps direct navigation button.
+
+3. **Multi-Point Modal Dismissal & Redundant Close Controls (`src/components/OfferModal.tsx`)**:
+   - **Persistent Sticky Header `✕ Close` Button**: Always visible regardless of scroll depth.
+   - **In-Description `✕ Close Description` Button**: Directly above the deal details.
+   - **Sticky Footer `✕ Close Window` Button**: Positioned in the bottom action bar.
+   - **Escape Key & Backdrop Dismissal**: Consistent across all modals.
+
+4. **Integer-Cents Multi-Currency Math (`src/lib/discounts.ts`)**:
    - Monetary amounts (`originalPriceCents`, `discountPriceCents`) are processed strictly as integer minor units to eliminate IEEE-754 floating-point inaccuracies.
-   - Supports USD (`$`), EUR (`€`), GBP (`£`), JPY (`¥`), CAD (`CA$`), AUD (`A$`), and AED (`AED`).
-   - Enforces price transparency regulations (EU Omnibus Directive & US FTC Truth in Advertising): Baseline prices must strictly exceed discount prices with honest declared prior prices.
+   - Supports USD (`$`), EUR (`€`), GBP (`£`), JPY (`¥`), CAD (`CA$`), AUD (`A$`), AED (`AED`), and PKR (`Rs`).
+   - Enforces price transparency regulations (EU Omnibus Directive & US FTC Truth in Advertising).
 
-3. **Tamper-Resistant Cryptographic Vouchers (`src/lib/redemptions.ts`):**
-   - Vouchers feature a human-readable code (e.g., `LD-PARIS-8821`, `LD-NYC-4821`) and an **HMAC-SHA256 signed QR token**.
+5. **Tamper-Resistant Cryptographic Vouchers (`src/lib/redemptions.ts`)**:
+   - Vouchers feature a human-readable code and an **HMAC-SHA256 signed QR token**.
    - Cash counter terminal prevents duplicate claims, tracks remaining quotas, and validates against counterfeit tokens.
 
-4. **Great-Circle Haversine Geolocation (`src/lib/geo.ts`):**
-   - Calculates distance in kilometers/meters between the user's location and merchant premises anywhere on Earth without paid third-party API dependencies.
-
-5. **Instant Persona Fast-Switcher (`src/components/Navbar.tsx`):**
-   - Toggle instantly between:
-     - 🏠 **Lucas Bernard** (*Resident / Customer*)
-     - 🏬 **Sal Moretti** (*Merchant — NYC Brooklyn Pizza*)
-     - 🛡️ **Claire Dubois** (*Global Admin & Moderator*)
+6. **Natural English URL Routing Aliases (`next.config.mjs`)**:
+   - `/my-vouchers` ➔ `/mes-coupons`
+   - `/merchant` ➔ `/commercant`
+   - `/terms` ➔ `/conditions-generales`
+   - `/privacy` ➔ `/politique-de-confidentialite`
+   - `/legal` ➔ `/mentions-legales`
 
 ---
 
 ## 🚀 Quickstart & Setup
 
 ### 1. Requirements
-- Node.js 18+ (tested on Node 24)
+- Node.js 18+ (tested on Node 20 & 24)
 - npm 9+
 
 ### 2. Setup & Database Sync
@@ -95,7 +110,7 @@ npm install
 npm run db:push
 
 # Seed with worldwide businesses & deals
-npm run db:seed
+node prisma/seed_worldwide.js
 ```
 
 ### 3. Run Automated Test Suite
@@ -123,7 +138,7 @@ Use the top-right persona switcher in the navigation bar to test the three exper
 | Persona | Name | Role | Access / Capabilities |
 |---|---|---|---|
 | 🏠 **Resident** | Lucas Bernard | `RESIDENT` | Browse worldwide deals, filter by city/discount, claim coupons, view QR vouchers in **My Vouchers** |
-| 🏬 **Merchant** | Sal Moretti | `MERCHANT` | Sal's Brooklyn Artisan Pizzeria (NYC): KPI analytics, cash counter validator (`LD-PARIS-8821`), publish deals |
+| 🏬 **Merchant** | Sal Moretti | `MERCHANT` | Sal's Brooklyn Artisan Pizzeria (NYC): KPI analytics, cash counter validator, publish deals |
 | 🛡️ **Admin** | Claire Dubois | `ADMIN` | Global moderation queue, business certification badges, resident report management |
 
 ---
@@ -131,9 +146,11 @@ Use the top-right persona switcher in the navigation bar to test the three exper
 ## 📁 Repository Structure
 
 ```
+├── .github/
+│   └── workflows/deploy.yml   # GitHub Actions automated build, test & DB migration pipeline
 ├── prisma/
-│   ├── schema.prisma          # 9 Core models (User, Business, Offer, Redemption, etc.)
-│   └── seed.js                # Worldwide seed script (NYC, London, Tokyo, Paris, Berlin, Sydney, Dubai)
+│   ├── schema.prisma          # Core models (User, Business, Offer, Voucher, Report, etc.)
+│   └── seed_worldwide.js      # Global multi-region database seed (13,000+ deals, 5,645 stores)
 ├── src/
 │   ├── app/
 │   │   ├── admin/page.tsx     # Admin moderation & business certification dashboard
@@ -142,11 +159,11 @@ Use the top-right persona switcher in the navigation bar to test the three exper
 │   │   ├── api/               # Validated REST API endpoints
 │   │   ├── layout.tsx         # Root layout with responsive header & footer
 │   │   └── page.tsx           # Global deals discovery feed (All Offers Worldwide)
-│   ├── components/            # OfferCard, Modals, Navbar, Footer, CookieBanner
-│   └── lib/                   # db, discounts, redemptions, geo, auth
+│   ├── components/            # OfferCard, OfferModal, RedemptionModal, ReportModal, Navbar, Footer
+│   └── lib/                   # db, discounts, redemptions, geo, auth, cityUtils
 ├── test/
 │   └── run-tests.js           # Automated domain, crypto & currency test suite
 ├── Dockerfile                 # Multi-stage production container
 ├── docker-compose.yml         # Container orchestration
-└── vercel.json                # Vercel deployment configuration
+└── next.config.mjs            # Production Next.js configuration with URL rewrites
 ```
