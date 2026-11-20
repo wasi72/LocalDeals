@@ -17,37 +17,37 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              La plateforme éthique de valorisation du commerce de proximité. Découvrez de vraies promotions vérifiées auprès des artisans et commerçants de votre quartier.
+              The ethical local commerce discovery network. Discover genuine, verified promotional discounts from trusted local merchants, artisans, and studios in your city.
             </p>
             <p className="text-[11px] text-slate-400 flex items-center gap-1">
-              Fait avec <Heart className="w-3 h-3 text-rose-500 fill-rose-500 inline" /> pour dynamiser les centres-villes
+              Built with <Heart className="w-3 h-3 text-rose-500 fill-rose-500 inline" /> to empower vibrant local economies worldwide
             </p>
           </div>
 
           {/* Resident Discover */}
           <div>
             <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">
-              Découvrir
+              Explore Deals
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/" className="hover:text-emerald-400 transition">
-                  Tous les bons plans près de vous
+                  All Authentic Deals Near You
                 </Link>
               </li>
               <li>
                 <Link href="/?endingSoon=true" className="hover:text-emerald-400 transition">
-                  Offres se terminant bientôt
+                  Offers Ending Soon
                 </Link>
               </li>
               <li>
                 <Link href="/mes-coupons" className="hover:text-emerald-400 transition">
-                  Mes coupons actifs & favoris
+                  My Active Vouchers &amp; Favorites
                 </Link>
               </li>
               <li>
                 <Link href="/#categories" className="hover:text-emerald-400 transition">
-                  Boulangeries, Beauté, Restauration
+                  Bakeries, Spas, Dining &amp; Fitness
                 </Link>
               </li>
             </ul>
@@ -56,68 +56,68 @@ export default function Footer() {
           {/* Business & Pilots */}
           <div>
             <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">
-              Commerçants & Artisans
+              Merchants &amp; Artisans
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/commercant" className="hover:text-emerald-400 transition">
-                  Tableau de bord commerçant
+                  Merchant Dashboard
                 </Link>
               </li>
               <li>
                 <Link href="/commercant#scanner" className="hover:text-emerald-400 transition">
-                  Scanner / Valider un coupon
+                  Scan &amp; Validate Voucher
                 </Link>
               </li>
               <li>
                 <Link href="/commercant#nouvelle-offre" className="hover:text-emerald-400 transition">
-                  Publier une offre de bienvenue
+                  Publish Welcome Promotion
                 </Link>
               </li>
               <li>
                 <span className="inline-block px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded text-[10px] font-semibold mt-1">
-                  Pilote gratuit — Sans engagement
+                  Free Pilot — No Commitment
                 </span>
               </li>
             </ul>
           </div>
 
-          {/* Legal & Compliance (EU / French regulations) */}
+          {/* Legal & Compliance (EU / Global regulations) */}
           <div>
             <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">
-              Conformité & Légal (France/UE)
+              Compliance &amp; Legal
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/mentions-legales" className="hover:text-emerald-400 transition flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5" />
-                  Mentions Légales (LCEN)
+                  Legal Notice
                 </Link>
               </li>
               <li>
                 <Link href="/politique-de-confidentialite" className="hover:text-emerald-400 transition flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5" />
-                  Politique de Confidentialité (RGPD)
+                  Privacy Policy (GDPR)
                 </Link>
               </li>
               <li>
                 <Link href="/conditions-generales" className="hover:text-emerald-400 transition flex items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5" />
-                  Conditions Générales d&apos;Utilisation
+                  Terms of Service
                 </Link>
               </li>
               <li className="pt-2 text-[11px] text-slate-400">
-                Conforme à la <strong>Directive européenne Omnibus</strong> sur la transparence des prix et des réductions.
+                Compliant with the <strong>EU Omnibus Directive</strong> on authentic pricing and genuine discount transparency.
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-800 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} LocalDeals France. Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} LocalDeals Worldwide. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <span className="text-[11px]">Plateforme sécurisée SSL & Chiffrement HMAC</span>
-            <span className="text-[11px] text-emerald-400 font-medium">● Services 100% opérationnels</span>
+            <span className="text-[11px]">SSL Encrypted &amp; HMAC Cryptographic Signatures</span>
+            <span className="text-[11px] text-emerald-400 font-medium">● 100% Operational</span>
           </div>
         </div>
       </div>

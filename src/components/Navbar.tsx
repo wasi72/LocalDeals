@@ -244,8 +244,16 @@ export default function Navbar({
             <label className="text-xs font-semibold text-slate-500 block mb-1">Select Location:</label>
             <select
               value={selectedCity}
-              onChange={(e) => onCityChange && onCityChange(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
+              onChange={(e) => {
+                const val = e.target.value;
+                setMobileMenuOpen(false);
+                if (onCityChange) {
+                  onCityChange(val);
+                } else {
+                  router.push(val === 'all' ? '/' : `/?city=${encodeURIComponent(val)}`);
+                }
+              }}
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium cursor-pointer"
             >
               {cities.map((c) => (
                 <option key={c.value} value={c.value}>

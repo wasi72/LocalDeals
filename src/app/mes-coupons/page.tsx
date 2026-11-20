@@ -27,26 +27,26 @@ export default function MyCouponsPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const res = await fetch('/api/offers');
+        const res = await fetch('/api/offers?limit=20');
         const data = await res.json();
 
         if (data.offers && data.offers.length > 0) {
-          // Pre-populate with Lucas's claimed voucher (Boulangerie) and favorite (Spa)
-          const boulangerieOffer = data.offers.find((o: any) => o.business?.name.includes('Fontaine')) || data.offers[0];
-          const spaOffer = data.offers.find((o: any) => o.business?.name.includes('Beauté')) || data.offers[1];
+          // Pre-populate with first available deals for active demonstration
+          const primaryOffer = data.offers[0];
+          const secondaryOffer = data.offers[1] || primaryOffer;
 
           setVouchers([
             {
               id: 'vouch-01',
-              code: 'LD-PARIS-8821',
+              code: 'LD-WORLD-8821',
               status: 'ACTIVE',
               expiresAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
-              offer: boulangerieOffer,
+              offer: primaryOffer,
             },
           ]);
 
-          if (spaOffer) {
-            setFavorites([spaOffer]);
+          if (secondaryOffer) {
+            setFavorites([secondaryOffer]);
           }
         }
       } catch (err) {
@@ -65,55 +65,57 @@ export default function MyCouponsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Ticket className="w-6 h-6 text-emerald-600" />
-            Mes Coupons & Favoris
+            My Vouchers &amp; Saved Deals
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Retrouvez tous vos bons de réduction prêts à être présentés chez vos commerçants
+            Access all your reserved discount vouchers and favorited local savings in one place
           </p>
         </div>
 
         {/* Tabs */}
         <div className="flex p-1 bg-slate-200/80 rounded-xl text-xs font-bold w-fit">
           <button
+            type="button"
             onClick={() => setActiveTab('vouchers')}
-            className={`px-4 py-2 rounded-lg transition ${
+            className={`px-4 py-2 rounded-lg transition cursor-pointer ${
               activeTab === 'vouchers'
                 ? 'bg-white text-emerald-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Coupons actifs ({vouchers.length})
+            Active Vouchers ({vouchers.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('favorites')}
-            className={`px-4 py-2 rounded-lg transition ${
+            className={`px-4 py-2 rounded-lg transition cursor-pointer ${
               activeTab === 'favorites'
                 ? 'bg-white text-emerald-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Favoris sauvegardés ({favorites.length})
+            Saved Favorites ({favorites.length})
           </button>
         </div>
       </div>
 
       {loading ? (
         <div className="py-16 text-center text-slate-400 text-xs font-semibold">
-          Chargement de vos coupons...
+          Loading your vouchers and saved items...
         </div>
       ) : activeTab === 'vouchers' ? (
         vouchers.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8 space-y-3">
             <Ticket className="w-10 h-10 text-slate-300 mx-auto" />
-            <h3 className="text-base font-bold text-slate-800">Aucun coupon réclamé pour le moment</h3>
+            <h3 className="text-base font-bold text-slate-800">No claimed vouchers yet</h3>
             <p className="text-xs text-slate-500">
-              Explorez les offres de votre quartier pour réclamer des réductions exclusives gratuites.
+              Browse authentic local deals in your city and claim exclusive discount vouchers for free.
             </p>
             <Link
               href="/"
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition"
             >
-              Explorer les bons plans
+              Explore Deals Near You
             </Link>
           </div>
         ) : (
@@ -125,8 +127,8 @@ export default function MyCouponsPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full uppercase">
-                      Prêt à être utilisé
+                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                      Ready to Redeem
                     </span>
                     <h3 className="text-base font-bold text-slate-900">
                       {v.offer?.business?.name}
@@ -149,29 +151,30 @@ export default function MyCouponsPage() {
                 {/* Voucher Code Box */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 flex items-center justify-between">
                   <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Code de réduction</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Discount Code</div>
                     <div className="font-mono text-base font-extrabold text-slate-900 tracking-wider">
                       {v.code}
                     </div>
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => setSelectedVoucherOffer(v.offer)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer"
                   >
                     <QrCode className="w-4 h-4" />
-                    <span>Afficher le QR</span>
+                    <span>Show QR Voucher</span>
                   </button>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{v.offer?.business?.address}, {v.offer?.business?.city}</span>
+                  <div className="flex items-center gap-1 truncate mr-2">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="truncate">{v.offer?.business?.address}, {v.offer?.business?.city}</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Expire le {new Date(v.expiresAt).toLocaleDateString('fr-FR')}</span>
+                    <span>Valid until {new Date(v.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                 </div>
               </div>
@@ -183,9 +186,9 @@ export default function MyCouponsPage() {
         favorites.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8 space-y-3">
             <Heart className="w-10 h-10 text-slate-300 mx-auto" />
-            <h3 className="text-base font-bold text-slate-800">Aucun bon plan favori</h3>
+            <h3 className="text-base font-bold text-slate-800">No saved favorites yet</h3>
             <p className="text-xs text-slate-500">
-              Cliquez sur le cœur d&apos;une offre pour la sauvegarder et la retrouver facilement.
+              Click the heart icon on any deal card to save it for quick access later.
             </p>
           </div>
         ) : (
@@ -211,7 +214,7 @@ export default function MyCouponsPage() {
                     href={`/?deal=${offer.id}`}
                     className="text-xs font-bold text-slate-900 hover:text-emerald-600 flex items-center gap-1"
                   >
-                    <span>Voir l&apos;offre</span>
+                    <span>View Deal</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

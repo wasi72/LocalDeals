@@ -478,18 +478,25 @@ export default function MerchantDashboard() {
 
       {/* Create Offer Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-slate-200 space-y-6">
+        <div
+          onClick={() => setShowCreateModal(false)}
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-slate-200 space-y-6"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-emerald-600" />
-                Publier une nouvelle offre
+                Publier une nouvelle offre / Publish Offer
               </h3>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 text-xs font-bold px-2.5 py-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               >
-                Fermer
+                ✕ Close
               </button>
             </div>
 

@@ -9,6 +9,15 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      { source: '/my-vouchers', destination: '/mes-coupons' },
+      { source: '/merchant', destination: '/commercant' },
+      { source: '/terms', destination: '/conditions-generales' },
+      { source: '/privacy', destination: '/politique-de-confidentialite' },
+      { source: '/legal', destination: '/mentions-legales' },
+    ];
+  },
   async headers() {
     return [
       {

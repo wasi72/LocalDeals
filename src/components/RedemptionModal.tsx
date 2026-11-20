@@ -27,6 +27,17 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   useEffect(() => {
     async function claimVoucher() {
       try {
@@ -40,10 +51,10 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
           setVoucher(data.voucher);
           setQrCodeUrl(data.qrCodeUrl);
         } else {
-          setError(data.error || 'Impossible de réclamer le coupon');
+          setError(data.error || 'Failed to claim voucher');
         }
       } catch (err: any) {
-        setError(err.message || 'Erreur réseau');
+        setError(err.message || 'Network error occurred');
       } finally {
         setLoading(false);
       }
@@ -53,7 +64,7 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
   }, [offer.id]);
 
   const copyCode = () => {
-    if (voucher?.code && navigator.clipboard) {
+    if (voucher?.code && typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(voucher.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -61,22 +72,38 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200/80 my-8">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200/90 my-6 flex flex-col"
+      >
+        {/* Sticky Header with Explicit Close Button */}
+        <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-5 py-3 border-b border-slate-200 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 truncate mr-3">
+            <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Claimed Voucher</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Close</span>
+          </button>
+        </div>
 
         <div className="p-6 md:p-8 text-center">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
               <p className="text-sm font-semibold text-slate-700">
-                Génération de votre coupon sécurisé...
+                Generating your secure cryptographic voucher...
               </p>
             </div>
           ) : error ? (
@@ -84,13 +111,14 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
               <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Échec de réclamation</h3>
+              <h3 className="text-lg font-bold text-slate-900">Claim Unsuccessful</h3>
               <p className="text-sm text-slate-600">{error}</p>
               <button
+                type="button"
                 onClick={onClose}
-                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition"
+                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
               >
-                Fermer
+                ✕ Close Window
               </button>
             </div>
           ) : (
@@ -102,7 +130,7 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
 
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                  Coupon Prêt & Réservé
+                  Voucher Ready &amp; Reserved
                 </span>
                 <h3 className="text-xl font-bold text-slate-900 mt-2">
                   {offer.business?.name}
@@ -132,15 +160,16 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
                     {voucher?.code}
                   </span>
                   <button
+                    type="button"
                     onClick={copyCode}
-                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
-                    title="Copier le code"
+                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm cursor-pointer"
+                    title="Copy voucher code"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1">
-                  Présentez ce QR code ou dictez le code en caisse
+                  Present this QR code or recite the code at the cash register
                 </span>
               </div>
 
@@ -180,12 +209,15 @@ export default function RedemptionModal({ offer, onClose }: RedemptionModalProps
                 <span>Single-use voucher secured with cryptographic HMAC signature</span>
               </div>
 
-              <button
-                onClick={onClose}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition"
-              >
-                Got it! Find in &quot;My Vouchers&quot;
-              </button>
+              <div className="pt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Got it! Find in &quot;My Vouchers&quot;
+                </button>
+              </div>
             </div>
           )}
         </div>

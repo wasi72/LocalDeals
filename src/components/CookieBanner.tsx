@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Cookie, X } from 'lucide-react';
+import { Cookie } from 'lucide-react';
 
 export default function CookieBanner() {
   const [show, setShow] = useState(false);
@@ -47,26 +47,28 @@ export default function CookieBanner() {
             <Cookie className="w-5 h-5" />
           </div>
           <div className="text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Respect de votre vie privée (CNIL / RGPD)</p>
+            <p className="font-semibold text-slate-900">Privacy &amp; Data Protection</p>
             <p className="mt-0.5">
-              LocalDeals utilise des cookies nécessaires au fonctionnement de la plateforme (sauvegarde de vos coupons et ville sélectionnée). 
-              Aucun traceur publicitaire tiers n&apos;est utilisé sans votre consentement.
+              LocalDeals uses essential cookies to remember your selected city, saved vouchers, and preferences. 
+              No third-party advertising trackers are used without your consent.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
           <button
+            type="button"
             onClick={handleRefuse}
-            className="flex-1 md:flex-initial px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+            className="flex-1 md:flex-initial px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
           >
-            Refuser non-essentiels
+            Essential Only
           </button>
           <button
+            type="button"
             onClick={handleAccept}
-            className="flex-1 md:flex-initial px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm"
+            className="flex-1 md:flex-initial px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm cursor-pointer"
           >
-            Accepter tout
+            Accept All
           </button>
         </div>
       </div>
